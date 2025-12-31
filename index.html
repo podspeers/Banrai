@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บ้านไร่ริมเขื่อน - Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root { --p: #1b5e20; --p-l: #e8f5e9; --av: #43a047; --rs: #fb8c00; --oc: #e53935; --gray: #f1f3f4; }
+        body { font-family: 'Kanit', sans-serif; background: #fdfdfd; margin: 0; color: #333; }
+        .header { background: var(--p); color: white; padding: 25px 20px; text-align: center; border-radius: 0 0 25px 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        .nav { display: flex; position: sticky; top: 0; z-index: 100; background: white; border-bottom: 1px solid #eee; }
+        .tab { flex: 1; padding: 18px; text-align: center; cursor: pointer; color: #666; transition: 0.3s; }
+        .tab.active { color: var(--p); border-bottom: 3px solid var(--p); font-weight: 600; background: var(--p-l); }
+        .content { padding: 20px; max-width: 650px; margin: auto; display: none; }
+        .content.active { display: block; animation: slideUp 0.4s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .t-card { background: var(--gray); border-radius: 15px; padding: 15px; text-align: center; border: 2px solid transparent; transition: all 0.2s ease; cursor: pointer; }
+        .t-card.available { border-top: 6px solid var(--av); background: #f9fdf9; }
+        .t-card.reserved { border-top: 6px solid var(--rs); background: #fffaf0; cursor: not-allowed; }
+        .t-card.occupied { border-top: 6px solid var(--oc); background: #fff5f5; cursor: not-allowed; }
+        .t-card.selected { border: 2px solid var(--p); transform: scale(1.05); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        input, select, button { width: 100%; padding: 14px; margin: 8px 0; border: 1.5px solid #eee; border-radius: 12px; font-family: 'Kanit'; font-size: 1rem; }
+        .btn-main { background: var(--p); color: white; border: none; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(27,94,32,0.3); }
+        .btn-main:disabled { background: #ccc; box-shadow: none; }
+        .admin-item { background: white; padding: 20px; border-radius: 18px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border-left: 8px solid var(--p); box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .status-btn { width: auto; padding: 8px 15px; font-size: 0.9rem; margin: 0 3px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 style="margin:0; font-size: 1.8rem;"><i class="fas fa-leaf"></i> บ้านไร่ริมเขื่อน</h1>
+    <div id="clock" style="margin-top:8px; font-weight: 300;"></div>
+</div>
+
+<div class="nav">
+    <div class="tab active" onclick="switchTab('booking')"><i class="fas fa-th-large"></i> จองโต๊ะ</div>
+    <div class="tab" onclick="switchTab('admin')"><i class="fas fa-concierge-bell"></i> ระบบพนักงาน</div>
+</div>
+
+<div id="booking" class="content active">
+    <div class="card" style="display:flex; align-items:center; gap:10px;">
+        <i class="fas fa-calendar-alt" style="color:var(--p)"></i>
+        <input type="date" id="targetDate" onchange="loadData()" style="margin:0; border:none;">
+    </div>
+    <div class="grid" id="tableGrid"></div>
+    <div class="card">
+        <h3 id="tableTitle" style="margin-top:0">กรุณาเลือกโต๊ะที่ว่าง...</h3>
+        <form onsubmit="doBooking(event)">
+            <input type="text" id="n" placeholder="ชื่อลูกค้า" required>
+            <input type="tel" id="ph" placeholder="เบอร์โทรศัพท์" required pattern="[0-9]{9,10}">
+            <div style="display:flex; gap:10px;">
+                <input type="time" id="tm" value="17:00" required>
+                <select id="p"><option>1-2 ท่าน</option><option>3-4 ท่าน</option><option selected>5-8 ท่าน</option><option>10+ ท่าน</option></select>
+            </div>
+            <input type="text" id="note" placeholder="หมายเหตุพิเศษ">
+            <button type="submit" class="btn-main" id="subBtn" disabled>ยืนยันการจองโต๊ะ</button>
+        </form>
+    </div>
+</div>
+
+<div id="admin" class="content">
+    <div id="login" class="card" style="text-align:center">
+        <i class="fas fa-lock" style="font-size: 2rem; color: var(--p); margin-bottom: 10px;"></i>
+        <h3>รหัสผ่านความปลอดภัย</h3>
+        <input type="password" id="pw" placeholder="••••••••">
+        <button class="btn-main" onclick="login()">เข้าสู่ระบบจัดการ</button>
+    </div>
+    <div id="adminView" style="display:none">
+        <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+            <b>จัดการวันที่:</b>
+            <input type="date" id="adminDate" onchange="loadData()" style="width:55%; margin:0;">
+        </div>
+        <div id="adminList"></div>
+    </div>
+</div>
+
+<script>
+    const URL = "https://script.google.com/macros/s/AKfycbwrmdA7nFfPPGRh8vu3Y8NnhAKvHDBJvNWALhLrZBwUBr1tHal4lWdO9zcMb4ZVn5bs/exec";
+    let state = { tables: [], selected: null, auth: false, lastCount: 0 };
+
+    window.onload = () => {
+        const now = new Date().toLocaleString("en-US", {timeZone: "Asia/Bangkok"});
+        const today = new Date(now).toISOString().split('T')[0];
+        document.getElementById('targetDate').value = today;
+        document.getElementById('adminDate').value = today;
+        
+        // Real-time Polling ทุก 5 วินาที
+        loadData();
+        setInterval(loadData, 5000); 
+
+        setInterval(() => {
+            const t = new Date().toLocaleTimeString('th-TH', {timeZone:'Asia/Bangkok', hour12:false});
+            document.getElementById('clock').innerHTML = `<i class="far fa-clock"></i> : ${t} น.`;
+        }, 1000);
+    };
+
+    function switchTab(t) {
+        document.querySelectorAll('.content, .tab').forEach(el => el.classList.remove('active'));
+        document.getElementById(t).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    async function loadData() {
+        const date = state.auth ? document.getElementById('adminDate').value : document.getElementById('targetDate').value;
+        try {
+            const res = await fetch(URL, {method:'POST', body: JSON.stringify({action:'get_data', date:date})});
+            const json = await res.json();
+            const newData = json.data || [];
+            
+            // แจ้งเตือนเมื่อมีการจองใหม่
+            if (state.auth && newData.length > state.lastCount && state.lastCount !== 0) {
+                new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
+                Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'มีรายการจองใหม่เข้า!', showConfirmButton: false, timer: 3000 });
+            }
+            
+            state.tables = newData;
+            state.lastCount = newData.length;
+            render();
+            if (state.auth) renderAdmin();
+        } catch(e) { console.error("Sync Error"); }
+    }
+
+    function render() {
+        const grid = document.getElementById('tableGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        const list = [...Array(9).keys()].map(i=>`V${i+1}`).concat([...Array(6).keys()].map(i=>`G${i+1}`));
+        list.forEach(t => {
+            const b = state.tables.find(x => x.table === t);
+            const s = b ? b.status : 'available';
+            const div = document.createElement('div');
+            div.className = `t-card ${s} ${state.selected === t ? 'selected' : ''}`;
+            div.innerHTML = `<b>${t}</b><br><small>${s==='available'?'ว่าง':(s==='reserved'?'จองแล้ว':'มีลูกค้า')}</small>`;
+            if(s === 'available') div.onclick = () => { state.selected = t; document.getElementById('tableTitle').innerHTML = `โต๊ะที่เลือก: <span style="color:var(--p)">${t}</span>`; document.getElementById('subBtn').disabled=false; render(); };
+            grid.appendChild(div);
+        });
+    }
+
+    async function doBooking(e) {
+        e.preventDefault();
+        Swal.fire({title:'กำลังบันทึกข้อมูล...', allowOutsideClick:false, didOpen:()=>Swal.showLoading()});
+        const data = {
+            action:'save_booking',
+            name: document.getElementById('n').value,
+            phone: document.getElementById('ph').value,
+            date: document.getElementById('targetDate').value,
+            time: document.getElementById('tm').value,
+            people: document.getElementById('p').value,
+            table: state.selected,
+            zone: state.selected.startsWith('V')?'ริมเขื่อน':'ทั่วไป',
+            note: document.getElementById('note').value
+        };
+        const res = await fetch(URL, {method:'POST', body: JSON.stringify(data)});
+        const resJson = await res.json();
+        if(resJson.data.success) { 
+            Swal.fire('สำเร็จ','บันทึกการจองให้คุณเรียบร้อยแล้ว','success'); 
+            document.querySelector('form').reset();
+            state.selected = null;
+            loadData(); 
+        } else {
+            Swal.fire('ขออภัย', resJson.data.message, 'error');
+        }
+    }
+
+    function login() { 
+        if(document.getElementById('pw').value==='TIGGERSS'){ 
+            state.auth=true; 
+            document.getElementById('login').style.display='none'; 
+            document.getElementById('adminView').style.display='block'; 
+            loadData(); 
+        } else { Swal.fire('รหัสผ่านผิด','กรุณาลองใหม่','error'); }
+    }
+
+    function renderAdmin() {
+        const list = document.getElementById('adminList');
+        list.innerHTML = state.tables.length ? '' : '<div class="card" style="text-align:center">ไม่มีรายการจองในวันที่เลือก</div>';
+        state.tables.forEach(b => {
+            const div = document.createElement('div');
+            div.className = `admin-item`;
+            div.style.borderLeftColor = b.status === 'occupied' ? 'var(--oc)' : 'var(--rs)';
+            div.innerHTML = `
+                <div><b>${b.table} | ${b.name}</b><br><small><i class="far fa-clock"></i> ${b.time} น. | ${b.phone}</small><br><small>👥 ${b.people}</small></div>
+                <div style="display:flex">
+                    ${b.status==='reserved' ? `<button onclick="upd('${b.table}','occupied')" class="status-btn btn-main" style="background:var(--av)">มาแล้ว</button>` : ''}
+                    <button onclick="upd('${b.table}','available')" class="status-btn" style="background:#eee; border:none; color:#666">ลบ</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    async function upd(t, s) {
+        Swal.fire({title:'อัพเดท...', timer:800, showConfirmButton:false, didOpen:()=>Swal.showLoading()});
+        await fetch(URL, {method:'POST', body: JSON.stringify({action:'update_status', tableNo:t, date:document.getElementById('adminDate').value, status:s})});
+        loadData();
+    }
+</script>
+</body>
+</html>
